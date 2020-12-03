@@ -2,6 +2,8 @@ package main
 
 import (
 	"fmt"
+	"math/rand"
+	"strconv"
 	"strings"
 )
 
@@ -16,6 +18,7 @@ func forestGen() {
 	var db map[string]string
 	db = map[string]string{"one": "1", "two": "2"}
 	fmt.Print(db["w"])
+	sort(db)
 
 	//定义变量
 	m := 10
@@ -138,25 +141,80 @@ func Intersect(a []string, b []string) []string {
 	return nn
 }
 
-//func indexGen(r []*Node){
-//	//初始化
-//	K := 1
-//	var L map[string] string
-//	L = map[string] string{"one": "1", "two": "2"}
-//	top := len(r) - 1
-//	b:=20
-//	B:=10
-//
-//	for top >= 0{
-//		n := r[top]
-//		top--
-//
-//		if len(n.ss) < b{
-//			//如果是空值的怎么办
-//			k1, k2 = F(K, n.val)
-//		} else if
-//	}
-//}
+func indexGen(r []*Node) {
+	//初始化
+	K := 1
+	var L map[string]string
+	L = map[string]string{"one": "1", "two": "2"}
+	top := len(r) - 1
+	b := 20
+	B := 10
+
+	for top >= 0 {
+		n := r[top]
+		top--
+
+		k1, k2 := F(K, n.val)
+		t := len(n.ss) / B
+		db := strings.Split(n.fs, " ")
+
+		if len(n.ss) < b {
+			//如果是空值的怎么办
+			for p <= len(n.ss) {
+				q := p + b
+
+				//分块
+				if q < len(n.ss) {
+					for ; p < q; p++ {
+						str += " " + db[p]
+					}
+				} else {
+					for ; p < len(n.ss); p++ {
+						str += " " + db[p]
+					}
+					//Pad
+					str += ","
+					for ; p < q; p++ {
+						str += " " + strconv.Itoa(rand.Int())
+					}
+				}
+
+				d := H(k2, str)
+
+				l := H(k1, 1)
+				L[l] = d
+			}
+		} else if len(n.ss) > b && len(n.ss) < b*B {
+			str := partition(len(n.ss), b, db)
+
+		}
+	}
+}
+
+func partition(len int, b int, db []string) string {
+	str := ""
+	p := 0
+	for p <= len {
+		q := p + b
+
+		//分块
+		if q < len {
+			for ; p < q; p++ {
+				str += " " + db[p]
+			}
+		} else {
+			for ; p < len; p++ {
+				str += " " + db[p]
+			}
+			//Pad
+			str += ","
+			for ; p < q; p++ {
+				str += " " + strconv.Itoa(rand.Int())
+			}
+		}
+	}
+	return str
+}
 
 func main() {
 	//treeBuild()
