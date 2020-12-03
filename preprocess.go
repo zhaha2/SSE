@@ -186,7 +186,7 @@ func indexGen(r []*Node) {
 			}
 		} else if len(n.ss) > b && len(n.ss) < b*B {
 			str := partition(len(n.ss), b, db)
-
+			print(str)
 		}
 	}
 }
