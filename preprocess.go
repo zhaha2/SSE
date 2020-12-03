@@ -7,14 +7,14 @@ import (
 
 type Node struct {
 	childs []*Node
-	fs string
-	ss string
-	val string
+	fs     string
+	ss     string
+	val    string
 }
 
-func forestGen(){
-	var db map[string] string
-	db = map[string] string{"one": "1", "two": "2"}
+func forestGen() {
+	var db map[string]string
+	db = map[string]string{"one": "1", "two": "2"}
 	fmt.Print(db["w"])
 
 	//定义变量
@@ -25,19 +25,19 @@ func forestGen(){
 	var dbw string
 	var p *Node
 
-	for w := range db{
+	for w := range db {
 		p = nil
 		max := 0
 		flag := 0
 		s = []*Node{}
-		for _, r := range roots{
+		for _, r := range roots {
 			s = append(s, r)
-			top ++
+			top++
 		}
 
 		dbw = db[w]
 
-		for len(s) != 0{
+		for len(s) != 0 {
 			top--
 			n := s[top]
 
@@ -47,8 +47,8 @@ func forestGen(){
 			is := Intersect(a, b)
 
 			//判断是哪种合并情况
-			if len(is) == len(a){
-				if len(is) == len(b){
+			if len(is) == len(a) {
+				if len(is) == len(b) {
 					p = n
 					flag = 1
 				} else if len(is) > max {
@@ -56,21 +56,21 @@ func forestGen(){
 					max = len(is)
 					flag = 2
 				}
-			} else if len(is) > max && len(is) > m{
+			} else if len(is) > max && len(is) > m {
 				p = n
 				max = len(is)
 				flag = 3
 			}
 
 			//之后，将n所有的孩子节点也放入栈中
-			for _, c := range n.childs{
+			for _, c := range n.childs {
 				s = append(s, c)
-				top ++
+				top++
 			}
 		}
 		print(p.fs, flag)
 		//根据情况构造树
-		if flag == 0{
+		if flag == 0 {
 			t := new(Node)
 			t.fs = dbw
 			t.ss = dbw
@@ -78,10 +78,10 @@ func forestGen(){
 			t.childs = nil
 
 			roots = append(roots, t)
-		} else if flag == 1{
+		} else if flag == 1 {
 			//没想好
 			p.val += w
-		} else if flag == 2{
+		} else if flag == 2 {
 			t := new(Node)
 			t.fs = dbw
 			//取差集
@@ -90,7 +90,7 @@ func forestGen(){
 			t.childs = nil
 
 			p.childs = append(p.childs, t)
-		} else if flag == 3{
+		} else if flag == 3 {
 			//父母节点的指向还是没变
 			t := new(Node)
 
@@ -107,16 +107,16 @@ func forestGen(){
 
 			u := new(Node)
 			u.fs = dbw
-			u.ss = dbw - t.ss
+			//取差集
+			u.ss = dbw + t.ss
 			u.val = w
 
-			p.ss = p.fs - t.ss
+			p.ss = p.fs + t.ss
 
 			t.childs = append(t.childs, u)
 			t.childs = append(t.childs, p)
 		}
 	}
-
 
 	//print(len(node.childs))
 }
@@ -138,25 +138,25 @@ func Intersect(a []string, b []string) []string {
 	return nn
 }
 
-func indexGen(r []*Node){
-	//初始化
-	K := 1
-	var L map[string] string
-	L = map[string] string{"one": "1", "two": "2"}
-	top := len(r) - 1
-	b:=20
-	B:=10
-
-	for top >= 0{
-		n := r[top]
-		top--
-
-		if len(n.ss) < b{
-			//如果是空值的怎么办
-			k1, k2 = F(K, n.val)
-		} else if
-	}
-}
+//func indexGen(r []*Node){
+//	//初始化
+//	K := 1
+//	var L map[string] string
+//	L = map[string] string{"one": "1", "two": "2"}
+//	top := len(r) - 1
+//	b:=20
+//	B:=10
+//
+//	for top >= 0{
+//		n := r[top]
+//		top--
+//
+//		if len(n.ss) < b{
+//			//如果是空值的怎么办
+//			k1, k2 = F(K, n.val)
+//		} else if
+//	}
+//}
 
 func main() {
 	//treeBuild()
