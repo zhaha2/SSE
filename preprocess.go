@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"math/rand"
+	"os"
 	"strconv"
 	"strings"
 	"time"
@@ -13,9 +14,10 @@ type Node struct {
 	childs []*Node
 	fs     string
 	ss     string
-	val    string
+	val    []string
 }
 
+//森林生成
 func forestGen() {
 	var db map[string]string
 
@@ -30,7 +32,7 @@ func forestGen() {
 	var s []*Node
 	top := -1
 	var roots []*Node
-	var delete []*Node
+	//var delete []*Node
 	var dbw string
 	var p *Node
 
@@ -39,6 +41,18 @@ func forestGen() {
 		max := 0
 		flag := 0
 		s = []*Node{}
+
+		//若是第一次
+		if len(roots) == 0 {
+			t := new(Node)
+			t.fs = dbw
+			t.ss = dbw
+			t.val = append(t.val, w)
+			t.childs = nil
+
+			roots = append(roots, t)
+			break
+		}
 
 		//所有根节点加入栈中
 		for _, r := range roots {
@@ -90,13 +104,13 @@ func forestGen() {
 			t := new(Node)
 			t.fs = dbw
 			t.ss = dbw
-			t.val = w
+			t.val = append(t.val, w)
 			t.childs = nil
 
 			roots = append(roots, t)
 		} else if flag == 1 {
-			//没想好
-			p.val += w
+			//
+			p.val = append(p.val, w)
 		} else if flag == 2 {
 			t := new(Node)
 			t.fs = dbw
@@ -104,23 +118,33 @@ func forestGen() {
 			a := strings.Split(dbw, " ")
 			b := strings.Split(p.fs, " ")
 			t.ss = strings.Trim(fmt.Sprint(difference(a, b)), "[]")
-			t.val = w
+			t.val = append(t.val, w)
 			t.childs = nil
 
 			p.childs = append(p.childs, t)
 		} else if flag == 3 {
 			t := new(Node)
-			t.fs = dbw
-			t.ss = t.fs
-			t.val = w
-			t.childs = append(t.childs, p)
+			t.fs = p.fs
+			t.ss = p.ss
+			t.val = p.val
+			t.childs = p.childs
 
-			roots = append(roots, t)
-			delete = append(delete, p)
+			p.fs = dbw
+			//
+			p.ss = p.fs
+			p.val = nil
+			p.val = append(p.val, w)
+			p.childs = nil
+			p.childs = append(p.childs, t)
+
+			//roots = append(roots, t)
+			//delete = append(delete, p)
 		} else if flag == 4 {
-			//没想好
-			//父母节点的指向还是没变
 			t := new(Node)
+			t.fs = p.fs
+			t.ss = p.ss
+			t.val = p.val
+			t.childs = p.childs
 
 			//取交集
 			a := strings.Split(p.fs, " ")
@@ -128,27 +152,32 @@ func forestGen() {
 
 			//数组转字符串
 			//strings.Replace(strings.Trim(fmt.Sprint(Intersect(a, b)), "[]"), " ", ",", -1)
-			t.fs = strings.Trim(fmt.Sprint(intersect(a, b)), "[]")
-			t.ss = t.fs
-			t.val = ""
-			t.childs = nil
+			p.fs = strings.Trim(fmt.Sprint(intersect(a, b)), "[]")
+			p.ss = p.fs
+			p.val = nil
+			p.childs = nil
 
 			u := new(Node)
 			u.fs = dbw
 			//取差集
 			a = strings.Split(dbw, " ")
-			b = strings.Split(t.fs, " ")
+			b = strings.Split(p.fs, " ")
 			u.ss = strings.Trim(fmt.Sprint(difference(a, b)), "[]")
-			u.val = w
+			u.val = append(u.val, w)
 			u.childs = nil
 
-			a = strings.Split(p.fs, " ")
-			b = strings.Split(t.fs, " ")
-			p.ss = strings.Trim(fmt.Sprint(difference(a, b)), "[]")
+			a = strings.Split(t.fs, " ")
+			b = strings.Split(p.fs, " ")
+			t.ss = strings.Trim(fmt.Sprint(difference(a, b)), "[]")
 
-			t.childs = append(t.childs, u)
-			t.childs = append(t.childs, p)
+			p.childs = append(t.childs, u)
+			p.childs = append(t.childs, t)
 		}
+	}
+
+	//输出
+	for _, t := range roots {
+		dfs(t)
 	}
 }
 
@@ -187,6 +216,7 @@ func difference(slice1, slice2 []string) []string {
 	return nn
 }
 
+//索引生成
 func indexGen(roots []*Node) {
 	//初始化
 	K := 1
@@ -196,106 +226,155 @@ func indexGen(roots []*Node) {
 	b := 20
 	B := 10
 
+	//预定义A大小
+	lenA := 1000
+	var A [1000]string
+
+	//出于性能考虑，可以预定义map大小
+	emp := make(map[int]int)
+	for i := 0; i < lenA; i++ {
+		emp[i] = i
+	}
+
 	for top >= 0 {
 		n := roots[top]
 		top--
-		//预定义A大小
-		var A []string
 
+		//字符串怎么转int, 要多长
 		k1, k2 := F(K, n.val)
-		t := len(n.ss) / B
-		db := strings.Split(n.fs, " ")
+		db := strings.Split(n.ss, " ")
 
 		if len(n.ss) < b {
 			//如果是空值的怎么办
-			str := partition(len(n.ss), b, db)
+			str := partition2(len(n.ss), b, db)
 
-			d := H(k2, str)
+			d := F(k2, str)
 			l := H(k1, 1)
 			L[l] = d
 		} else if len(n.ss) > b && len(n.ss) < b*B {
-			buf := strings.Split(partition2(len(n.ss), B, db), " ")
+			buf := partition(len(n.ss), B, db)
 
 			//数组随机位置存储
 			var arr []int
-			for i := 0; i < 100; i++ {
-				arr = append(arr, i)
+			for k := range emp {
+				arr = append(arr, k)
 			}
-			ii, _ := Random(arr, 100)
+			ii, _ := Random(arr, len(arr))
 
-			//这里还是只能连续存储
+			//将buf中1，2，3，4...位置的ids存到A中随机空位
+			for j, v := range ii {
+				A[v] = H(k2, buf[j])
+			}
+
+			//将存过数据的位置从emp中删除
 			for _, v := range ii {
-				A = append(A, H(k2, buf[v]))
+				delete(emp, v)
 			}
 
 			//把ii打包分块
 			var iistr []string
-			for i := 0; i < 100; i++ {
+			for i := 0; i < len(ii); i++ {
 				iistr = append(iistr, strconv.Itoa(ii[i]))
 			}
-			rst := partition(len(iistr), b, iistr)
+			rst := partition2(len(iistr), b, iistr)
 
-			d := H(k2, rst)
+			d := F(k2, rst)
 			l := H(k1, 1)
 			L[l] = d
 		} else {
-			buf := strings.Split(partition2(len(n.ss), B, db), " ")
+			buf := partition(len(n.ss), B, db)
 
 			//数组随机位置存储
 			var arr []int
-			for i := 0; i < 100; i++ {
-				arr = append(arr, i)
+			for k := range emp {
+				arr = append(arr, k)
 			}
-			ii, _ := Random(arr, 100)
+			ii, _ := Random(arr, len(arr))
 
-			//这里还是只能连续存储
+			//将buf中1，2，3，4...位置的ids存到A中随机空位
+			for j, v := range ii {
+				A[v] = H(k2, buf[j])
+			}
+
+			//将存过数据的位置从emp中删除
 			for _, v := range ii {
-				A = append(A, H(k2, buf[v]))
+				delete(emp, v)
 			}
 
 			//把ii打包分块
 			var iistr []string
-			for i := 0; i < 100; i++ {
+			for i := 0; i < len(ii); i++ {
 				iistr = append(iistr, strconv.Itoa(ii[i]))
 			}
-			rst := partition(len(iistr), b, iistr)
 
-			d := H(k2, rst)
+			//再次打包
+			buf2 := partition(len(iistr), b, iistr)
+
+			arr = []int{}
+			for k := range emp {
+				arr = append(arr, k)
+			}
+			ii, _ = Random(arr, len(arr))
+
+			//将buf2中1，2，3，4...位置的ids存到A中随机空位
+			for j, v := range ii {
+				A[v] = H(k2, buf2[j])
+			}
+
+			//将存过数据的位置从emp中删除
+			for _, v := range ii {
+				delete(emp, v)
+			}
+
+			//把ii打包分块
+			iistr = []string{}
+			for i := 0; i < len(ii); i++ {
+				iistr = append(iistr, strconv.Itoa(ii[i]))
+			}
+			rst := partition2(len(iistr), b, iistr)
+
+			d := F(k2, rst)
 			l := H(k1, 1)
 			L[l] = d
 		}
 	}
 }
 
+//分块 返回字符串数组
 func partition(len int, b int, db []string) []string {
 	var rst []string
 	p := 0
 	for p < len {
+		str := ""
 		q := p + b
 
 		//分块
 		if q < len {
 			for ; p < q; p++ {
-				rst = append(rst, db[p])
+				//加分隔符
+				str += " " + db[p]
 			}
 		} else {
 			for ; p < len; p++ {
-				rst = append(rst, db[p])
+				str += " " + db[p]
 			}
 			//Pad
 			//填充什么
 			for ; p < q; p++ {
-				rst = append(rst, strconv.Itoa(rand.Int()))
+				str += " " + strconv.Itoa(rand.Int())
 			}
 		}
+		rst = append(rst, str)
 	}
 	return rst
 }
 
+//分块 返回字符串
 func partition2(len int, b int, db []string) string {
-	str := ""
+	rst := ""
 	p := 0
 	for p < len {
+		str := ""
 		q := p + b
 
 		//分块
@@ -308,14 +387,14 @@ func partition2(len int, b int, db []string) string {
 				str += " " + db[p]
 			}
 			//Pad(怎么区分)
-			str += ","
 			//填充什么
 			for ; p < q; p++ {
 				str += " " + strconv.Itoa(rand.Int())
 			}
 		}
+		rst += "," + str
 	}
-	return str
+	return rst
 }
 
 //随机打乱数组
@@ -339,6 +418,50 @@ func Random(ints []int, length int) ([]int, error) {
 		rst = append(rst, ints[i])
 	}
 	return ints, nil
+}
+
+func F(k int64) (val int64) {
+	rand.Seed(k)
+	return rand.Int63()
+}
+
+func H(k int64) (val int64) {
+	rand.Seed(k)
+	return rand.Int63()
+}
+
+//写文件函数
+func writeFile(adress string, data string) {
+	f, err := os.OpenFile(adress, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0777)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	_, err = fmt.Fprint(f, data+" ")
+	if err != nil {
+		fmt.Println(err)
+		f.Close()
+		return
+	}
+	err = f.Close()
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	fmt.Println("Write file complete!")
+
+}
+
+//dfs
+func dfs(t *Node) {
+	if t == nil {
+		return
+	}
+	writeFile("abc.txt", "fs:"+t.fs+" ss:"+t.ss+"\n")
+
+	for _, n := range t.childs {
+		dfs(n)
+	}
 }
 
 func main() {
