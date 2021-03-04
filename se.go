@@ -1,8 +1,8 @@
 package main
 
 import (
-	"crypto/md5"
 	"crypto/sha1"
+	"crypto/sha256"
 	"fmt"
 	"io"
 )
@@ -15,10 +15,9 @@ import (
 //	rand.Seed(int64(seed))
 //	fmt.Println(rand.Int())
 //}
-
 //对字符串进行MD5哈希
 func a(data string) string {
-	t := md5.New()
+	t := sha256.New()
 	io.WriteString(t, data)
 	return fmt.Sprintf("%x", t.Sum(nil))
 }
@@ -30,7 +29,14 @@ func b(data string) string {
 	return fmt.Sprintf("%x", t.Sum(nil))
 }
 func main() {
-	var data string = "abc"
+	var data string = "abcddas12"
 	fmt.Printf("MD5 : %s\n", a(data))
+	println("a")
+
+	println(a(data))
+	k1 := a(data)[:len(a(data))/2]
+	println(k1)
+	k2 := a(data)[len(a(data))/2:]
+	println(k2)
 	fmt.Printf("SHA1 : %s\n", b(data))
 }
