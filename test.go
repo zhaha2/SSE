@@ -5,12 +5,7 @@ import (
 )
 
 func main() {
-	a := []int{0, 1, 2, 3, 4, 5, 6, 7, 8}
-	i := 3
-
-	a = append(a[:i], a[i+1:]...)
-	fmt.Println(a)
-	for _, b := range a {
-		println(b)
-	}
+	err := fmt.Errorf("获取数据发生错误")
+	println(err)
+	println(err == fmt.Errorf("获取数据发生错误"))
 }

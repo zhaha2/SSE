@@ -5,7 +5,9 @@ import (
 	"fmt"
 	"math/rand"
 	"os"
+	"sort"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -16,7 +18,11 @@ func GetRandomK(l int) string {
 	//！！！！！！！
 	result := []byte{}
 	r := rand.New(rand.NewSource(time.Now().UnixNano()))
-	for i := 0; i < l; i++ {
+	lenK := rand.Intn(l)
+	if lenK == 0 {
+		lenK = 1
+	}
+	for i := 0; i < lenK; i++ {
 		result = append(result, bytes[r.Intn(len(bytes))])
 	}
 	return string(result)
@@ -37,6 +43,7 @@ func GetRandomK(l int) string {
 //nummax为id数字最大值，nmax为最多每个kw有几个id
 func GetRandomV(nummax int, nmax int) string {
 	var str []int
+	var sortStr []int
 	for i := 0; i <= nummax; i++ {
 		str = append(str, i)
 	}
@@ -51,18 +58,59 @@ func GetRandomV(nummax int, nmax int) string {
 		n = 1
 	}
 	for i := 0; i < n; i++ {
-		result += strconv.Itoa(str[i]) + " "
+		sortStr = append(sortStr, str[i])
 	}
-	result = result[:len(result)-1]
+	sort.Ints(sortStr)
+	for i := 0; i < n; i++ {
+		result += strconv.Itoa(sortStr[i]) + " "
+	}
+
+	//去除句尾空格
+	result = strings.TrimSpace(result)
 	return result
+}
+
+func writeFile(adress string, data string) {
+	f, err := os.OpenFile(adress, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0777)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	_, err = fmt.Fprint(f, data+" ")
+	if err != nil {
+		fmt.Println(err)
+		f.Close()
+		return
+	}
+	err = f.Close()
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	fmt.Println("Write file complete!")
+
 }
 
 func main() {
 	m := make(map[string]string)
+	var key string
+	keys := ""
 	//生成20个kw的数据
-	for i := 0; i < 20; i++ {
-		m[GetRandomK(10)] = GetRandomV(15, 12)
+	for i := 0; i < 40; i++ {
+		key = GetRandomK(10)
+		//如果该key已存在，重来
+		for len(m[key]) != 0 {
+			key = GetRandomK(10)
+		}
+		keys += key + " "
+
+		m[key] = GetRandomV(20, 15)
 		time.Sleep(100)
+	}
+
+	//打印字典m
+	for k, v := range m {
+		println(k + " : " + v)
 	}
 
 	//写文件
@@ -90,4 +138,9 @@ func main() {
 		return
 	}
 	fmt.Println("Write file complete!")
+
+	//去除字符串首位空格
+	keys = strings.TrimSpace(keys)
+	//写Keywords
+	writeFile("Keywords.txt", keys)
 }

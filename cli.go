@@ -2,7 +2,9 @@ package main
 
 import (
 	"bufio"
+	"crypto/sha256"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"log"
 	"math/rand"
@@ -10,7 +12,14 @@ import (
 	"os/exec"
 	"strconv"
 	"strings"
+	"time"
 )
+
+func H(k string, val string) (rst string) {
+	t := sha256.New()
+	io.WriteString(t, k+val)
+	return fmt.Sprintf("%x", t.Sum(nil))
+}
 
 //IndexGen
 func upload() {
@@ -23,8 +32,8 @@ func upload() {
 	}
 	fmt.Println("Contents of A:", string(data))
 
-	//将字符串形式的A上传至区块链
-	comm := `peer chaincode invoke -n my -c '{"Args":["uploadA","` + string(data) + `"]}' -C myc`
+	//将字符串形式的A上传至区块链,A要去除首尾空格
+	comm := `peer chaincode invoke -n my -c '{"Args":["uploadA","` + strings.TrimSpace(string(data)) + `"]}' -C myc`
 	cmd := exec.Command("/bin/sh", "-c", comm)
 	cmd.Stdout = os.Stdout
 	_ = cmd.Run()
@@ -131,22 +140,22 @@ func batchq() {
 	}
 
 	//读入所有关键字
-	kw, err := ioutil.ReadFile("kws.txt")
+	kw, err := ioutil.ReadFile("Keywords.txt")
 	if err != nil {
 		fmt.Println("File reading error", err)
 		return
 	}
-	kws := strings.Split(string(kw), " ")
+	kws := strings.Split(strings.TrimSpace(string(kw)), " ")
 	lenkws := len(kws)
 
 	//搜索20次，为了实验取平均值
-	for i := 0; i < 20; i++ {
-		//gai成时间更好？
-		rand.Seed(int64(i))
+	for i := 0; i < 1; i++ {
 
-		//随机搜索n/5个关键字，共返回n个文件
-		for j := 0; j < (n / 5); j++ {
+		//随机搜索n个关键字，共返回n个文件
+		for j := 0; j < n; j++ {
+			rand.Seed(time.Now().UnixNano())
 			kw := kws[rand.Intn(lenkws)]
+			println("Kw: " + kw)
 			queryBase(kw)
 		}
 

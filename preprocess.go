@@ -2,7 +2,11 @@ package main
 
 import (
 	"bufio"
+	"bytes"
+	"crypto/aes"
+	"crypto/cipher"
 	"crypto/sha256"
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -43,8 +47,8 @@ func forest_IndexGen() {
 		panic(err)
 	}
 
-	//对每个文件对应的ids也按大小排序,否则每次输出结果不一样,!!gai应该在生成阶段做
-	sortIds(db)
+	////对每个文件对应的ids也按大小排序,否则每次输出结果不一样,!!gai应该在生成阶段做
+	//sortIds(db)
 
 	//先排序，大的在前先合并
 	var newDbKeys = sortDb(db)
@@ -59,6 +63,7 @@ func forest_IndexGen() {
 	var p *Node
 
 	for _, w := range newDbKeys {
+		println("_______________________________")
 		p = nil
 		max := 0
 		flag := 0
@@ -100,11 +105,11 @@ func forest_IndexGen() {
 
 			//若当前合并节点的父节点的全集不是新结果集子集，不进行合并
 			if n.parent != nil {
-				a = strings.Split(n.parent.fs, " ")
-				b = strings.Split(dbw, " ")
-				//break他的孩子节点也不判断了
-				if len(intersect(a, b)) != len(b) {
-					break
+				c := strings.Split(n.parent.fs, " ")
+				d := strings.Split(dbw, " ")
+				//他的孩子节点也不判断了, flag为0
+				if len(intersect(c, d)) != len(c) {
+					continue
 				}
 			}
 
@@ -113,12 +118,13 @@ func forest_IndexGen() {
 				if len(is) == len(b) {
 					p = n
 					flag = 1
+					break
 				} else if len(is) > max {
 					p = n
 					max = len(is)
 					flag = 2
 				}
-			} else if len(is) == len(b) {
+			} else if len(is) == len(b) && len(is) > max {
 				p = n
 				max = len(is)
 				flag = 3
@@ -128,13 +134,20 @@ func forest_IndexGen() {
 				flag = 4
 			}
 
+			print("n.v: ")
+			for _, v := range n.val {
+				print(v + " ")
+			}
+			print("w: " + w)
+			print("max: " + strconv.Itoa(max))
+
+			println(" flag: " + strconv.Itoa(flag))
+
 			//之后，将n所有的孩子节点也放入栈中
 			//gai如果某种情况就不用加了
-			for _, c := range n.childs {
-				s = append(s, c)
+			for _, ch := range n.childs {
+				s = append(s, ch)
 			}
-
-			println(strconv.Itoa(flag))
 		}
 
 		//从db中删除这个关键字和合并的关键字
@@ -148,11 +161,13 @@ func forest_IndexGen() {
 			t.val = append(t.val, w)
 			t.childs = nil
 			t.parent = nil
+			//t.val = append(t.val, "f0")
 
 			roots = append(roots, t)
 		} else if flag == 1 {
 			//
 			p.val = append(p.val, w)
+			//p.val = append(p.val, "f1")
 		} else if flag == 2 {
 			t := new(Node)
 			t.fs = dbw
@@ -164,16 +179,22 @@ func forest_IndexGen() {
 			t.childs = nil
 			t.parent = p
 
+			//t.val = append(t.val, "f2")
+			//p.val = append(p.val, "f2")
+
 			p.childs = append(p.childs, t)
 		} else if flag == 3 {
 			t := new(Node)
 			t.fs = p.fs
-			t.ss = p.ss
+			b := strings.Split(dbw, " ")
+			a := strings.Split(p.fs, " ")
+			t.ss = strings.Trim(fmt.Sprint(difference(a, b)), "[]")
 			t.val = p.val
+			//t.val = append(t.val, "f3")
+			t.parent = p
 			t.childs = p.childs
 
 			p.fs = dbw
-			//
 			p.ss = p.fs
 			p.val = nil
 			p.val = append(p.val, w)
@@ -218,6 +239,15 @@ func forest_IndexGen() {
 			//p.childs = append(t.childs, u)
 			//p.childs = append(p.childs, t)
 
+			print("最终 n.v: ")
+			for _, v := range p.val {
+				print(v + " ")
+			}
+			print("w: " + w)
+			print("max: " + strconv.Itoa(max))
+
+			println(" flag: " + strconv.Itoa(flag))
+
 			t := new(Node)
 			t.parent = p.parent
 			if p.parent == nil {
@@ -229,7 +259,15 @@ func forest_IndexGen() {
 						break
 					}
 				}
-
+			} else {
+				//从p.parent.child删除p加入t
+				for i, n := range p.parent.childs {
+					if n == p {
+						p.parent.childs = append(p.parent.childs[:i], p.parent.childs[i+1:]...)
+						break
+					}
+				}
+				p.parent.childs = append(p.parent.childs, t)
 			}
 
 			//取交集
@@ -239,7 +277,16 @@ func forest_IndexGen() {
 			//数组转字符串
 			//strings.Replace(strings.Trim(fmt.Sprint(Intersect(a, b)), "[]"), " ", ",", -1)
 			t.fs = strings.Trim(fmt.Sprint(intersect(a, b)), "[]")
-			t.ss = t.fs
+
+			//取差集
+			if t.parent == nil {
+				t.ss = t.fs
+			} else {
+				a = strings.Split(t.fs, " ")
+				b = strings.Split(t.parent.fs, " ")
+				t.ss = strings.Trim(fmt.Sprint(difference(a, b)), "[]")
+			}
+
 			t.val = nil
 			t.childs = nil
 
@@ -258,9 +305,15 @@ func forest_IndexGen() {
 			p.ss = strings.Trim(fmt.Sprint(difference(a, b)), "[]")
 			p.parent = t
 
+			//t.val = append(t.val, "f4")
+			//u.val = append(u.val, "f4")
+			//p.val = append(p.val, "f4")
+
 			t.childs = append(t.childs, u)
 			t.childs = append(t.childs, p)
 		}
+
+		println("\n_______________________________")
 	}
 
 	//输出
@@ -274,23 +327,23 @@ func forest_IndexGen() {
 	indexGen(roots)
 }
 
-func sortIds(db map[string]string) {
-	for k, v := range db {
-		intIds := []int{}
-		ids := strings.Split(v, " ")
-		for _, i := range ids {
-			num, _ := strconv.Atoi(i)
-			intIds = append(intIds, num)
-		}
-		sort.Ints(intIds)
-
-		sortIds := ""
-		for _, i := range intIds {
-			sortIds += strconv.Itoa(i) + " "
-		}
-		db[k] = sortIds
-	}
-}
+//func sortIds(db map[string]string) {
+//	for k, v := range db {
+//		intIds := []int{}
+//		ids := strings.Split(v, " ")
+//		for _, i := range ids {
+//			num, _ := strconv.Atoi(i)
+//			intIds = append(intIds, num)
+//		}
+//		sort.Ints(intIds)
+//
+//		sortIds := ""
+//		for _, i := range intIds {
+//			sortIds += strconv.Itoa(i) + " "
+//		}
+//		db[k] = sortIds
+//	}
+//}
 
 //先排序，大的在前先合并
 func sortDb(db map[string]string) []string {
@@ -380,7 +433,7 @@ func indexGen(roots []*Node) {
 	b := 20
 	B := 10
 
-	//gai和L一起存就行了 不用多存一次第一个关键字
+	//gai和L一起存就行了 不用多存一次第一个关键字, 有没有必要加,会不会泄露信息
 	//顶层索引
 	Fst := make(map[string]string)
 
@@ -435,6 +488,7 @@ func nodeProcess(n *Node, b int, B int, L map[string]string,
 	var k1 string
 	var k2 string
 	var l string
+	var fl string
 
 	db := strings.Split(n.ss, " ")
 
@@ -462,7 +516,8 @@ func nodeProcess(n *Node, b int, B int, L map[string]string,
 
 		l = H(k1, "1")
 
-		Fst[k1] = l
+		fl = H(k1, "0")
+		Fst[fl] = F(k2, l+"|||"+k2)
 	} else {
 		nkw = n.val[0]
 
@@ -472,16 +527,22 @@ func nodeProcess(n *Node, b int, B int, L map[string]string,
 
 		l = H(k1, "1")
 
-		Fst[k1] = l
+		fl = H(k1, "0")
+		Fst[fl] = F(k2, l+"|||"+k2)
 
 		//所有相同结果集的关键字都和第一个关键字地址一样
-		for _, val := range n.val {
+		for _, val := range n.val[1:] {
 			bkk := H(K, val)
-			bk1 := bkk[:len(kk)/2]
+			bk1 := bkk[:len(bkk)/2]
+			bk2 := bkk[len(bkk)/2:]
 
-			Fst[bk1] = l
+			bfl := H(bk1, "0")
+			Fst[bfl] = F(bk2, l+"|||"+k2)
 		}
 	}
+
+	//不sleep会乱序
+	time.Sleep(100)
 
 	if len(db) < b {
 
@@ -522,7 +583,7 @@ func nodeProcess(n *Node, b int, B int, L map[string]string,
 
 		//将buf中1，2，3，4...位置的ids存到A中随机空位
 		for j, v := range ii {
-			A[v] = H(k2, buf[j])
+			A[v] = F(k2, buf[j])
 		}
 
 		//将存过数据的位置从emp中删除
@@ -565,7 +626,7 @@ func nodeProcess(n *Node, b int, B int, L map[string]string,
 
 		//将buf中1，2，3，4...位置的ids存到A中随机空位
 		for j, v := range ii {
-			A[v] = H(k2, buf[j])
+			A[v] = F(k2, buf[j])
 		}
 
 		//将存过数据的位置从emp中删除
@@ -593,7 +654,7 @@ func nodeProcess(n *Node, b int, B int, L map[string]string,
 
 		//将buf2中1，2，3，4...位置的ids存到A中随机空位
 		for j, v := range ii {
-			A[v] = H(k2, buf2[j])
+			A[v] = F(k2, buf2[j])
 		}
 
 		//将存过数据的位置从emp中删除
@@ -616,11 +677,17 @@ func nodeProcess(n *Node, b int, B int, L map[string]string,
 	}
 
 	if len(n.childs) != 0 {
+		//不sleep会乱序
+		time.Sleep(100)
 		//处理所有孩子节点
 		for _, c := range n.childs {
 			nodeProcess(c, b, B, L, emp, kk, Fst)
 		}
+		//不sleep会乱序
+		time.Sleep(100)
 	} else {
+		//不sleep会乱序
+		time.Sleep(100)
 		return
 	}
 }
@@ -647,7 +714,7 @@ func partition(len int, b int, db []string) []string {
 			//填充什么
 			str += "*"
 			for ; p < q; p++ {
-				str += " " + strconv.Itoa(rand.Int())
+				str += " " + strconv.Itoa(rand.Intn(999))
 			}
 		}
 		rst = append(rst, str)
@@ -676,7 +743,7 @@ func partition2(len int, b int, db []string) string {
 			//填充什么
 			str += "*"
 			for ; p < q; p++ {
-				str += " " + strconv.Itoa(rand.Int())
+				str += " " + strconv.Itoa(rand.Intn(999))
 			}
 		}
 
@@ -709,10 +776,36 @@ func Random(ints []int, length int) ([]int, error) {
 	return ints, nil
 }
 
-func F(k string, val string) (rst string) {
-	t := sha256.New()
-	io.WriteString(t, k+val)
-	return fmt.Sprintf("%x", t.Sum(nil))
+//aes加密用
+func PKCS7Padding(ciphertext []byte, blockSize int) []byte {
+	padding := blockSize - len(ciphertext)%blockSize
+	padtext := bytes.Repeat([]byte{byte(padding)}, padding)
+	return append(ciphertext, padtext...)
+}
+
+//AES加密
+func AesEncrypt(origData, key []byte) ([]byte, error) {
+	block, err := aes.NewCipher(key)
+	if err != nil {
+		return nil, err
+	}
+	blockSize := block.BlockSize()
+	origData = PKCS7Padding(origData, blockSize)
+	blockMode := cipher.NewCBCEncrypter(block, key[:blockSize])
+	crypted := make([]byte, len(origData))
+	blockMode.CryptBlocks(crypted, origData)
+	return crypted, nil
+}
+
+//加密
+func F(key string, origData string) (rst string) {
+	text := origData
+	AesKey := key //秘钥长度为16的倍数
+	encrypted, err := AesEncrypt([]byte(text), []byte(AesKey))
+	if err != nil {
+		panic(err)
+	}
+	return base64.StdEncoding.EncodeToString(encrypted)
 }
 
 func H(k string, val string) (rst string) {
@@ -906,13 +999,17 @@ func bfs(t *Node) {
 	bf := 1
 	af := bf
 	for _, sn = range slist {
+		nkww := ""
 		bf = af
 		af = sn.hei
 		if af > bf {
 			writeFile("bfsTree.txt", "\n")
 		}
 
-		writeFile("bfsTree.txt", "    fs:"+sn.n.fs+"    ss:"+sn.n.ss+" || ")
+		for _, w := range sn.n.val {
+			nkww += w + " "
+		}
+		writeFile("bfsTree.txt", "    fs:"+sn.n.fs+"    ss:"+sn.n.ss+"    kw:"+nkww+" || ")
 
 	}
 }
