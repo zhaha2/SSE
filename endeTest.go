@@ -86,21 +86,15 @@ func H(k string, val string) (rst string) {
 
 func main() {
 	var K = "randstr123456"
-	kk := H(K, "new1")
+	kk := H(K, "zj95ej6k")
 	k1 := kk[:len(kk)/2]
 	k2 := kk[len(kk)/2:]
+	println(k1)
+	println(k2)
 	l := H(k1, "1")
 	fl := H(k1, "0")
 	fst := Fen(k2, l+"|||"+k2)
 	println(fl)
 	println(string(fst))
 
-	kk = H(K, "zf9p1dz")
-	k1 = kk[:len(kk)/2]
-	k2 = kk[len(kk)/2:]
-	l = H(k1, "1")
-	fl = H(k1, "0")
-	fst = Fen(k2, l+"|||"+k2)
-	println(fl)
-	println(string(fst))
 }

@@ -1,11 +1,11 @@
 package main
 
-import (
-	"fmt"
-)
-
 func main() {
-	err := fmt.Errorf("获取数据发生错误")
-	println(err)
-	println(err == fmt.Errorf("获取数据发生错误"))
+	var iistr []string
+	for i := 0; i < 3; i++ {
+
+		iistr = append(iistr, "cc")
+
+	}
+	println(iistr)
 }

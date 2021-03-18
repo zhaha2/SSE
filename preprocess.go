@@ -165,7 +165,6 @@ func forest_IndexGen() {
 
 			roots = append(roots, t)
 		} else if flag == 1 {
-			//
 			p.val = append(p.val, w)
 			//p.val = append(p.val, "f1")
 		} else if flag == 2 {
@@ -195,7 +194,13 @@ func forest_IndexGen() {
 			t.childs = p.childs
 
 			p.fs = dbw
-			p.ss = p.fs
+			if p.parent == nil {
+				p.ss = p.fs
+			} else {
+				a = strings.Split(p.fs, " ")
+				b = strings.Split(p.parent.fs, " ")
+				p.ss = strings.Trim(fmt.Sprint(difference(a, b)), "[]")
+			}
 			p.val = nil
 			p.val = append(p.val, w)
 			p.childs = nil
@@ -430,8 +435,8 @@ func indexGen(roots []*Node) {
 	L := make(map[string]string)
 	top := len(roots) - 1
 	//实验确定
-	b := 20
-	B := 10
+	b := 10 //b是L中每块的大小
+	B := 5  //B是A中每块的大小
 
 	//gai和L一起存就行了 不用多存一次第一个关键字, 有没有必要加,会不会泄露信息
 	//顶层索引
@@ -547,6 +552,7 @@ func nodeProcess(n *Node, b int, B int, L map[string]string,
 	if len(db) < b {
 
 		str := partition2(len(db), b, db)
+		println("part2:  " + str)
 
 		//父节点地址
 		strr := ""
@@ -560,7 +566,7 @@ func nodeProcess(n *Node, b int, B int, L map[string]string,
 
 		d := F(k2, str)
 		L[l] = d
-	} else if len(db) > b && len(db) < b*B {
+	} else if len(db) >= b && len(db) < b*B {
 
 		buf := partition(len(db), B, db)
 
@@ -579,24 +585,30 @@ func nodeProcess(n *Node, b int, B int, L map[string]string,
 		for k := range emp {
 			arr = append(arr, k)
 		}
+		//ii为此时A中所有空位位置乱序的结果
 		ii, _ := Random(arr, len(arr))
 
+		var iistr []string
 		//将buf中1，2，3，4...位置的ids存到A中随机空位
 		for j, v := range ii {
+			if j >= len(buf) {
+				break
+			}
 			A[v] = F(k2, buf[j])
-		}
-
-		//将存过数据的位置从emp中删除
-		for _, v := range ii {
+			//将存过数据的位置从emp中删除
 			delete(emp, v)
+
+			//把ii打包分块
+			iistr = append(iistr, strconv.Itoa(v))
 		}
 
 		//把ii打包分块
-		var iistr []string
-		for i := 0; i < len(ii); i++ {
-			iistr = append(iistr, strconv.Itoa(ii[i])+" ")
-		}
+		//var iistr []string
+		//for i := 0; i < len(ii); i++ {
+		//	iistr = append(iistr, strconv.Itoa(ii[i])+" ")
+		//}
 		rst := partition2(len(iistr), b, iistr)
+		println("part2:  " + rst)
 
 		//标明是地址
 		rst += "-"
@@ -624,27 +636,41 @@ func nodeProcess(n *Node, b int, B int, L map[string]string,
 		}
 		ii, _ := Random(arr, len(arr))
 
+		////将buf中1，2，3，4...位置的ids存到A中随机空位
+		//for j, v := range ii {
+		//	A[v] = F(k2, buf[j])
+		//}
+		//
+		////将存过数据的位置从emp中删除
+		//for _, v := range ii {
+		//	delete(emp, v)
+		//}
+		//
+		////把ii打包分块
+		//var iistr []string
+		//for i := 0; i < len(ii); i++ {
+		//	iistr = append(iistr, strconv.Itoa(ii[i]))
+		//}
+
+		var iistr []string
 		//将buf中1，2，3，4...位置的ids存到A中随机空位
 		for j, v := range ii {
+			if j >= len(buf) {
+				break
+			}
 			A[v] = F(k2, buf[j])
-		}
-
-		//将存过数据的位置从emp中删除
-		for _, v := range ii {
+			//将存过数据的位置从emp中删除
 			delete(emp, v)
-		}
 
-		//把ii打包分块
-		var iistr []string
-		for i := 0; i < len(ii); i++ {
-			iistr = append(iistr, strconv.Itoa(ii[i]))
+			//把ii打包分块
+			iistr = append(iistr, strconv.Itoa(v))
 		}
 
 		//再次打包
 		buf2 := partition(len(iistr), b, iistr)
 
 		//标明是地址
-		buf[len(buf)-1] += "-"
+		buf2[len(buf)-1] += "-"
 
 		arr = []int{}
 		for k := range emp {
@@ -652,22 +678,37 @@ func nodeProcess(n *Node, b int, B int, L map[string]string,
 		}
 		ii, _ = Random(arr, len(arr))
 
-		//将buf2中1，2，3，4...位置的ids存到A中随机空位
-		for j, v := range ii {
-			A[v] = F(k2, buf2[j])
-		}
+		////将buf2中1，2，3，4...位置的ids存到A中随机空位
+		//for j, v := range ii {
+		//	A[v] = F(k2, buf2[j])
+		//}
+		//
+		////将存过数据的位置从emp中删除
+		//for _, v := range ii {
+		//	delete(emp, v)
+		//}
+		//
+		////把ii打包分块
+		//iistr = []string{}
+		//for i := 0; i < len(ii); i++ {
+		//	iistr = append(iistr, strconv.Itoa(ii[i]))
+		//}
 
-		//将存过数据的位置从emp中删除
-		for _, v := range ii {
-			delete(emp, v)
-		}
-
-		//把ii打包分块
 		iistr = []string{}
-		for i := 0; i < len(ii); i++ {
-			iistr = append(iistr, strconv.Itoa(ii[i]))
+		//将buf中1，2，3，4...位置的ids存到A中随机空位
+		for j, v := range ii {
+			if j >= len(buf2) {
+				break
+			}
+			A[v] = F(k2, buf2[j])
+			//将存过数据的位置从emp中删除
+			delete(emp, v)
+
+			//把ii打包分块
+			iistr = append(iistr, strconv.Itoa(v))
 		}
 		rst := partition2(len(iistr), b, iistr)
+		println("part2:  " + rst)
 
 		//标明是地址
 		rst += "-"
@@ -750,6 +791,9 @@ func partition2(len int, b int, db []string) string {
 		//不同块之间用"，"隔开
 		rst += str + ","
 	}
+
+	//去除字符串首位空格
+	rst = strings.TrimSpace(rst)
 	return rst
 }
 
