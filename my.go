@@ -3,9 +3,12 @@ package main
 import (
 	"crypto/sha256"
 	"encoding/base64"
+	"encoding/json"
 	"github.com/hyperledger/fabric/core/chaincode/shim"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	"io"
+	"io/ioutil"
+	"sort"
 	"strings"
 
 	"bytes"
@@ -64,6 +67,18 @@ func (t *MyChaincode) Invoke(stub shim.ChaincodeStubInterface) pb.Response {
 		//将搜索总时间写入文件
 		writeFileSC("Time_q.txt", t)
 		fmt.Println("Query time: " + t + " s\n")
+	} else if fn == "tquery" {
+		fmt.Println("tquery")
+		timeCost := int64(0)
+		result, err, timeCost = tquery(stub, args)
+		if err != nil {
+			return shim.Error(err.Error())
+		}
+
+		t := strconv.FormatFloat(float64(timeCost)*0.000000001, 'f', 4, 64)
+		//将搜索总时间写入文件
+		writeFileSC("Time_q.txt", t)
+		fmt.Println("Tquery time: " + t + " s\n")
 	} else {
 		fmt.Println("Input err!")
 	}
@@ -185,12 +200,300 @@ func uploadFst(stub shim.ChaincodeStubInterface, args []string) ([]byte, error) 
 	return []byte(args[0]), nil
 }
 
+//查询之后判断结果正确
+func tquery(stub shim.ChaincodeStubInterface, args []string) ([]byte, error, int64) {
+	start := time.Now()
+	var result []string
+	var dddl []string
+	var A []string
+	var isResult bool
+	var isRoot bool
+	var parentkk string
+	var err error
+	var newK2 string
+	isR := false
+
+	if len(args) != 3 {
+		return nil, fmt.Errorf("给定的参数个数不符合要求"), 0
+	}
+
+	isResult, isRoot, parentkk, dddl, err, newK2 = fstPreQ(stub, args)
+	if err != nil {
+		panic(err)
+		return nil, err, 0
+	}
+	//println("ok2"+args[1])
+	//更新k2
+	args[1] = newK2
+	//println("nk2"+args[1])
+
+	//直到找到根节点
+	for isRoot != true {
+		for isResult != true {
+			//println("not root not result")
+
+			//获取数组A
+			if A == nil || len(A) == 0 {
+				A1, err := stub.GetState("A")
+				if err != nil {
+					panic(err)
+					return nil, fmt.Errorf("获取数据发生错误"), 0
+				}
+				if A1 == nil {
+					panic(err)
+					return nil, fmt.Errorf("根据 %s 没有获取到相应的数据", args[0]), 0
+				}
+				//还原成字符串数组
+				A = strings.Split(string(A1), " ")
+			}
+
+			var temp []string
+
+			//要先预处理dddl
+			//println("odddl")
+			//fmt.Println(dddl)
+			//println()
+
+			for _, i := range dddl {
+				ii, _ := strconv.Atoi(i)
+				//fmt.Println("i: "+i+" Ai: "+A[ii])
+				//fmt.Println(ii)
+				dd := F(args[1], A[ii])
+				temp = append(temp, dd)
+			}
+			dddl = temp
+
+			//println("ndddl")
+			//fmt.Println(dddl)
+			//println("____ndddl")
+			//println()
+
+			//判断是结果还是地址
+			if string(dddl[len(dddl)-1][len(dddl[len(dddl)-1])-1]) == "+" {
+				isResult = true
+				//先处理dddl最后一位
+				dddl[len(dddl)-1], parentkk = preDddl(dddl[len(dddl)-1])
+				if len(parentkk) == 0 {
+					isRoot = true
+				}
+				//fmt.Print("res: ")
+				//fmt.Println(result)
+			} else {
+				isResult = false
+
+				var temp []string
+
+				//fmt.Println(dddl)
+				//fmt.Println()
+				//fmt.Println(dddl[len(dddl)-1])
+				//println()
+
+				//先处理dddl最后一位
+				dddl[len(dddl)-1], parentkk = preDddl(dddl[len(dddl)-1])
+
+				//fmt.Println(dddl[len(dddl)-1])
+				//
+				//println("pre dddl")
+				//fmt.Println(dddl)
+				//
+				//println("new dddl")
+				//println()
+				for _, i := range dddl {
+					dd := strings.Split(i, " ")
+					for _, ddi := range dd {
+						//println(ddi)
+						temp = append(temp, ddi)
+					}
+				}
+				dddl = temp
+			}
+		}
+		//println("not root is result")
+
+		//找到result
+
+		for _, i := range dddl {
+			fmt.Printf("\033[34m%s\033[0m", i+" ")
+			result = append(result, i)
+		}
+
+		//fmt.Print("res: ")
+		//fmt.Println(result)
+
+		if isRoot {
+			//这种方式退出的说明已经找完根节点内容了，下面不用重复找了
+			isR = true
+			break
+		}
+
+		kk := parentkk
+		k1 := kk[:len(kk)/2]
+		k2 := kk[len(kk)/2:]
+		args[0] = k1
+		args[1] = k2
+
+		isResult, isRoot, parentkk, dddl, err = preQ(stub, args)
+		if err != nil {
+			panic(err)
+			return nil, err, 0
+		}
+	}
+
+	//找到根节点
+	for isResult != true {
+		println("is root not result")
+		//获取数组A
+		if A == nil {
+			A1, err := stub.GetState("A")
+			if err != nil {
+				panic(err)
+				return nil, fmt.Errorf("获取数据发生错误"), 0
+			}
+			if A1 == nil {
+				panic(err)
+				return nil, fmt.Errorf("根据 %s 没有获取到相应的数据", args[0]), 0
+			}
+			//还原成字符串数组
+			A = strings.Split(string(A1), " ")
+		}
+
+		var temp []string
+
+		for _, i := range dddl {
+			ii, _ := strconv.Atoi(i)
+			dd := F(args[1], A[ii])
+			temp = append(temp, dd)
+		}
+		dddl = temp
+
+		//判断是结果还是地址
+		if string(dddl[len(dddl)-1][len(dddl[len(dddl)-1])-1]) == "+" {
+			isResult = true
+			//先处理dddl最后一位
+			dddl[len(dddl)-1], _ = preDddl(dddl[len(dddl)-1])
+		} else {
+			isResult = false
+
+			var temp []string
+
+			//fmt.Println(dddl)
+			//fmt.Println()
+			//fmt.Println(dddl[len(dddl)-1])
+
+			//先处理dddl最后一位
+			dddl[len(dddl)-1], parentkk = preDddl(dddl[len(dddl)-1])
+
+			//fmt.Println(dddl[len(dddl)-1])
+			//
+			//println("pre dddl")
+			//fmt.Println(dddl)
+			//
+			//println("new dddl")
+			for _, i := range dddl {
+				dd := strings.Split(i, " ")
+				for _, ddi := range dd {
+					//println(ddi)
+					temp = append(temp, ddi)
+				}
+			}
+			dddl = temp
+		}
+	}
+
+	//非isR的要再找一次
+	if !isR {
+		//找到result
+		for _, i := range dddl {
+			fmt.Printf("\033[34m%s\033[0m", i+" ")
+			result = append(result, i)
+		}
+	}
+
+	fmt.Printf("\033[32m%s\033[0m", "\n Query complete!\n")
+
+	buf2 := &bytes.Buffer{}
+	gob.NewEncoder(buf2).Encode(result)
+	byteSlice := []byte(buf2.Bytes())
+	end := time.Now()
+	//输出总时间
+	b := end.Sub(start)
+	fmt.Printf("Query time cost: %s \n", b)
+
+	//gai 比较结果正确性
+	//从文件读出db
+	//读取指定文件内容，返回的data是[]byte类型数据
+	var db map[string]string
+	var trst []string
+	var itrst []int
+	var irst []int
+	sum := 0
+	flag := true
+
+	fdb, err := ioutil.ReadFile("db.txt")
+	if err != nil {
+		panic(err)
+		fmt.Print(err)
+	}
+
+	//Unmarshal将data数据转换成指定的结构体类型,经过json转换后data中的数据已写入map中
+	err = json.Unmarshal(fdb, &db)
+	if err != nil {
+		panic(err)
+	}
+
+	trst = strings.Split(db[args[2]], " ")
+	for _, i := range trst {
+		j, err := strconv.Atoi(i)
+		if err != nil {
+			panic(err)
+		}
+		itrst = append(itrst, j)
+	}
+	for _, i := range result {
+		if i == " " {
+			continue
+		}
+		ii := strings.Split(i, " ")
+		for _, iii := range ii {
+			if iii == " " || len(iii) == 0 {
+				continue
+			}
+			j, err := strconv.Atoi(iii)
+			if err != nil {
+				panic(err)
+			}
+			irst = append(irst, j)
+			sum += 1
+		}
+	}
+	sort.Ints(irst)
+
+	fmt.Println(irst)
+	fmt.Println(itrst)
+
+	for i, j := range itrst {
+		if j != irst[i] {
+			flag = false
+		}
+	}
+	if flag {
+		//fmt.Printf("\033[32m%s%d\033[0m", "Num of ids: ", sum)
+		//fmt.Println()
+		fmt.Printf("\033[32m%t\033[0m", flag)
+	} else {
+		fmt.Printf("\033[41m%t\033[0m", flag)
+		panic("Result wrong!!!!!!!!!!!")
+	}
+	fmt.Println()
+
+	return byteSlice, nil, b.Nanoseconds()
+}
+
 func query(stub shim.ChaincodeStubInterface, args []string) ([]byte, error, int64) {
 	start := time.Now()
 	var result []string
 	var dddl []string
 	var A []string
-	var temp []string
 	var isResult bool
 	var isRoot bool
 	var parentkk string
@@ -225,6 +528,8 @@ func query(stub shim.ChaincodeStubInterface, args []string) ([]byte, error, int6
 				//还原成字符串数组
 				A = strings.Split(string(A1), " ")
 			}
+
+			var temp []string
 
 			for _, i := range dddl {
 				ii, _ := strconv.Atoi(i)
@@ -279,6 +584,8 @@ func query(stub shim.ChaincodeStubInterface, args []string) ([]byte, error, int6
 			A = strings.Split(string(A1), " ")
 		}
 
+		var temp []string
+
 		for _, i := range dddl {
 			ii, _ := strconv.Atoi(i)
 			dd := F(args[1], A[ii])
@@ -311,6 +618,7 @@ func query(stub shim.ChaincodeStubInterface, args []string) ([]byte, error, int6
 	//输出总时间
 	b := end.Sub(start)
 	fmt.Printf("Query time cost: %s \n", b)
+
 	return byteSlice, nil, b.Nanoseconds()
 }
 
@@ -320,7 +628,7 @@ func preDddl(dddlast string) (string, string) {
 	dddlast = dddlast[:len(dddlast)-1]
 
 	pak := strings.Split(dddlast, "||")
-	if len(pak[1]) == 0 {
+	if len(pak) == 1 || len(pak[1]) == 0 {
 		dddlast = pak[0]
 		parentkk = ""
 	} else {

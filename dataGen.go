@@ -97,14 +97,14 @@ func main() {
 	keys := ""
 	//生成20个kw的数据
 	for i := 0; i < 100; i++ {
-		key = GetRandomK(10) //l为kw最大长度
+		key = GetRandomK(15) //l为kw最大长度
 		//如果该key已存在，重来
 		for len(m[key]) != 0 {
 			key = GetRandomK(10)
 		}
 		keys += key + " "
 
-		m[key] = GetRandomV(40, 25) //nummax为id数字最大值，nmax为最多每个kw有几个id
+		m[key] = GetRandomV(100, 60) //nummax为id数字最大值，nmax为最多每个kw有几个id
 		time.Sleep(100)
 	}
 

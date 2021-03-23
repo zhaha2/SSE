@@ -435,8 +435,8 @@ func indexGen(roots []*Node) {
 	L := make(map[string]string)
 	top := len(roots) - 1
 	//实验确定
-	b := 10 //b是L中每块的大小
-	B := 5  //B是A中每块的大小
+	b := 4 //b是L中每块的大小
+	B := 4 //B是A中每块的大小
 
 	//gai和L一起存就行了 不用多存一次第一个关键字, 有没有必要加,会不会泄露信息
 	//顶层索引
@@ -579,6 +579,8 @@ func nodeProcess(n *Node, b int, B int, L map[string]string,
 
 		//标明是结果
 		buf[len(buf)-1] += "+"
+		//
+		//fmt.Println(buf)
 
 		//数组随机位置存储
 		var arr []int
@@ -594,7 +596,8 @@ func nodeProcess(n *Node, b int, B int, L map[string]string,
 			if j >= len(buf) {
 				break
 			}
-			A[v] = F(k2, buf[j])
+			//去除字符串首位空格
+			A[v] = F(k2, strings.TrimSpace(buf[j]))
 			//将存过数据的位置从emp中删除
 			delete(emp, v)
 
@@ -636,22 +639,6 @@ func nodeProcess(n *Node, b int, B int, L map[string]string,
 		}
 		ii, _ := Random(arr, len(arr))
 
-		////将buf中1，2，3，4...位置的ids存到A中随机空位
-		//for j, v := range ii {
-		//	A[v] = F(k2, buf[j])
-		//}
-		//
-		////将存过数据的位置从emp中删除
-		//for _, v := range ii {
-		//	delete(emp, v)
-		//}
-		//
-		////把ii打包分块
-		//var iistr []string
-		//for i := 0; i < len(ii); i++ {
-		//	iistr = append(iistr, strconv.Itoa(ii[i]))
-		//}
-
 		var iistr []string
 		//将buf中1，2，3，4...位置的ids存到A中随机空位
 		for j, v := range ii {
@@ -670,29 +657,13 @@ func nodeProcess(n *Node, b int, B int, L map[string]string,
 		buf2 := partition(len(iistr), b, iistr)
 
 		//标明是地址
-		buf2[len(buf)-1] += "-"
+		buf2[len(buf2)-1] += "-"
 
 		arr = []int{}
 		for k := range emp {
 			arr = append(arr, k)
 		}
 		ii, _ = Random(arr, len(arr))
-
-		////将buf2中1，2，3，4...位置的ids存到A中随机空位
-		//for j, v := range ii {
-		//	A[v] = F(k2, buf2[j])
-		//}
-		//
-		////将存过数据的位置从emp中删除
-		//for _, v := range ii {
-		//	delete(emp, v)
-		//}
-		//
-		////把ii打包分块
-		//iistr = []string{}
-		//for i := 0; i < len(ii); i++ {
-		//	iistr = append(iistr, strconv.Itoa(ii[i]))
-		//}
 
 		iistr = []string{}
 		//将buf中1，2，3，4...位置的ids存到A中随机空位
@@ -758,6 +729,8 @@ func partition(len int, b int, db []string) []string {
 				str += " " + strconv.Itoa(rand.Intn(999))
 			}
 		}
+		//去除字符串首位空格
+		str = strings.TrimSpace(str)
 		rst = append(rst, str)
 	}
 	return rst
