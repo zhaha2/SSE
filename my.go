@@ -60,6 +60,7 @@ func (t *MyChaincode) Invoke(stub shim.ChaincodeStubInterface) pb.Response {
 		timeCost := int64(0)
 		result, err, timeCost = query(stub, args)
 		if err != nil {
+			panic(err)
 			return shim.Error(err.Error())
 		}
 
@@ -341,7 +342,7 @@ func tquery(stub shim.ChaincodeStubInterface, args []string) ([]byte, error, int
 
 	//找到根节点
 	for isResult != true {
-		println("is root not result")
+		//println("is root not result")
 		//获取数组A
 		if A == nil {
 			A1, err := stub.GetState("A")
@@ -499,6 +500,7 @@ func query(stub shim.ChaincodeStubInterface, args []string) ([]byte, error, int6
 	var parentkk string
 	var err error
 	var newK2 string
+	isR := false
 
 	if len(args) != 2 {
 		return nil, fmt.Errorf("给定的参数个数不符合要求"), 0
@@ -506,23 +508,24 @@ func query(stub shim.ChaincodeStubInterface, args []string) ([]byte, error, int6
 
 	isResult, isRoot, parentkk, dddl, err, newK2 = fstPreQ(stub, args)
 	if err != nil {
+		panic(err)
 		return nil, err, 0
 	}
-	//更新k2
+
 	args[1] = newK2
 
 	//直到找到根节点
 	for isRoot != true {
 		for isResult != true {
-			//println("not root not result")
-
 			//获取数组A
 			if A == nil || len(A) == 0 {
 				A1, err := stub.GetState("A")
 				if err != nil {
+					panic(err)
 					return nil, fmt.Errorf("获取数据发生错误"), 0
 				}
 				if A1 == nil {
+					panic(err)
 					return nil, fmt.Errorf("根据 %s 没有获取到相应的数据", args[0]), 0
 				}
 				//还原成字符串数组
@@ -543,17 +546,37 @@ func query(stub shim.ChaincodeStubInterface, args []string) ([]byte, error, int6
 				isResult = true
 				//先处理dddl最后一位
 				dddl[len(dddl)-1], parentkk = preDddl(dddl[len(dddl)-1])
+				if len(parentkk) == 0 {
+					isRoot = true
+				}
 			} else {
 				isResult = false
+
+				var temp []string
+
+				//先处理dddl最后一位
+				dddl[len(dddl)-1], parentkk = preDddl(dddl[len(dddl)-1])
+
+				for _, i := range dddl {
+					dd := strings.Split(i, " ")
+					for _, ddi := range dd {
+						temp = append(temp, ddi)
+					}
+				}
+				dddl = temp
 			}
 		}
-		//println("not root is result")
-
 		//找到result
 
 		for _, i := range dddl {
 			fmt.Printf("\033[34m%s\033[0m", i+" ")
 			result = append(result, i)
+		}
+
+		if isRoot {
+			//这种方式退出的说明已经找完根节点内容了，下面不用重复找了
+			isR = true
+			break
 		}
 
 		kk := parentkk
@@ -564,20 +587,22 @@ func query(stub shim.ChaincodeStubInterface, args []string) ([]byte, error, int6
 
 		isResult, isRoot, parentkk, dddl, err = preQ(stub, args)
 		if err != nil {
+			panic(err)
 			return nil, err, 0
 		}
 	}
 
 	//找到根节点
 	for isResult != true {
-		//println("is root not result")
 		//获取数组A
 		if A == nil {
 			A1, err := stub.GetState("A")
 			if err != nil {
+				panic(err)
 				return nil, fmt.Errorf("获取数据发生错误"), 0
 			}
 			if A1 == nil {
+				panic(err)
 				return nil, fmt.Errorf("根据 %s 没有获取到相应的数据", args[0]), 0
 			}
 			//还原成字符串数组
@@ -600,15 +625,31 @@ func query(stub shim.ChaincodeStubInterface, args []string) ([]byte, error, int6
 			dddl[len(dddl)-1], _ = preDddl(dddl[len(dddl)-1])
 		} else {
 			isResult = false
+
+			var temp []string
+
+			//先处理dddl最后一位
+			dddl[len(dddl)-1], parentkk = preDddl(dddl[len(dddl)-1])
+
+			for _, i := range dddl {
+				dd := strings.Split(i, " ")
+				for _, ddi := range dd {
+					temp = append(temp, ddi)
+				}
+			}
+			dddl = temp
 		}
 	}
 
-	//找到result
-
-	for _, i := range dddl {
-		fmt.Printf("\033[34m%s\033[0m", i+" ")
-		result = append(result, i)
+	//非isR的要再找一次
+	if !isR {
+		//找到result
+		for _, i := range dddl {
+			fmt.Printf("\033[34m%s\033[0m", i+" ")
+			result = append(result, i)
+		}
 	}
+
 	fmt.Printf("\033[32m%s\033[0m", "\n Query complete!\n")
 
 	buf2 := &bytes.Buffer{}
